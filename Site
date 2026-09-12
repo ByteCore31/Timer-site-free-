@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChronoGlow — Ультра Таймеры & Будильники</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #00f0ff;
+      --accent: #ff007b;
+      --secondary: #7928ca;
+      --bg: #090a10;
+      --glass: rgba(18, 20, 36, 0.65);
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #f3f4f6;
+      --text-muted: #8b92a5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow-x: hidden;
+      padding: 20px;
+    }
+
+    /* Анимированный фоновый градиент */
+    .bg-lights {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .light-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.5;
+      animation: float 14s infinite alternate ease-in-out;
+    }
+
+    .blob-1 {
+      width: 480px;
+      height: 480px;
+      background: var(--primary);
+      top: -100px;
+      left: -100px;
+    }
+
+    .blob-2 {
+      width: 420px;
+      height: 420px;
+      background: var(--accent);
+      bottom: -100px;
+      right: -100px;
+      animation-delay: -5s;
+    }
+
+    .blob-3 {
+      width: 320px;
+      height: 320px;
+      background: var(--secondary);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: -9s;
+    }
+
+    @keyframes float {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(60px, 40px) scale(1.15); }
+      100% { transform: translate(-40px, 80px) scale(0.9); }
+    }
+
+    /* Контейнер приложения */
+    .app-card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 520px;
+      background: var(--glass);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid var(--border);
+      border-radius: 32px;
+      padding: 36px 28px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7),
+                  0 0 40px rgba(0, 240, 255, 0.1);
+      transition: border-color 0.4s ease;
+    }
+
+    .app-card:hover {
+      border-color: rgba(0, 240, 255, 0.3);
+    }
+
+    /* Навигация / Вкладки */
+    .nav-tabs {
+      display: flex;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 6px;
+      border-radius: 20px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px 14px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(255, 0, 123, 0.2));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* Экран содержимого вкладок */
+    .tab-panel {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .tab-panel.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Циферблат таймера */
+    .timer-circle-wrap {
+      position: relative;
+      width: 250px;
+      height: 250px;
+      margin: 10px 0 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .timer-svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+
+    .timer-svg circle {
+      fill: none;
+      stroke-width: 8;
+      stroke-linecap: round;
+    }
+
+    .circle-bg {
+      stroke: rgba(255, 255, 255, 0.06);
+    }
+
+    .circle-progress {
+      stroke: url(#glowGradient);
+      stroke-dasharray: 691;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 0.25s linear;
+      filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.6));
+    }
+
+    .display-time {
+      position: absolute;
+      font-family: 'Orbitron', monospace;
+      font-size: 40px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #fff;
+      text-shadow: 0 0 18px rgba(0, 240, 255, 0.6);
+    }
+
+    /* Поля ввода таймера */
+    .timer-inputs {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 25px;
+    }
+
+    .input-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .input-box input {
+      width: 68px;
+      height: 52px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 20px;
+      text-align: center;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    .input-box input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 14px rgba(0, 240, 255, 0.4);
+      background: rgba(0, 240, 255, 0.06);
+    }
+
+    .input-box span {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .time-colon {
+      font-family: 'Orbitron';
+      font-size: 24px;
+      color: var(--text-muted);
+      margin-top: -18px;
+    }
+
+    /* Кнопки управления */
+    .controls {
+      display: flex;
+      gap: 14px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 18px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #00a8ff);
+      color: #030816;
+      box-shadow: 0 8px 24px rgba(0, 240, 255, 0.35);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 10px 30px rgba(0, 240, 255, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--accent), #d1005a);
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(255, 0, 123, 0.35);
+    }
+
+    .btn-danger:hover {
+      box-shadow: 0 10px 30px rgba(255, 0, 123, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    /* Список будильников */
+    .alarm-current-time {
+      font-family: 'Orbitron', monospace;
+      font-size: 48px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #fff;
+      margin: 10px 0 20px;
+      text-shadow: 0 0 20px rgba(255, 0, 123, 0.4);
+    }
+
+    .alarm-form {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    .alarm-form input[type="time"] {
+      flex: 1;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      color: #fff;
+      font-family: 'Orbitron';
+      font-size: 18px;
+      padding: 0 16px;
+      outline: none;
+    }
+
+    .alarm-form input[type="text"] {
+      flex: 1.5;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      color: #fff;
+      padding: 0 16px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .alarm-list {
+      width: 100%;
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 4px;
+    }
+
+    .alarm-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .alarm-info h4 {
+      font-family: 'Orbitron';
+      font-size: 20px;
+      letter-spacing: 1px;
+    }
+
+    .alarm-info p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .del-btn {
+      background: none;
+      border: none;
+      color: #ff4757;
+      cursor: pointer;
+      font-size: 18px;
+      transition: transform 0.2s;
+    }
+
+    .del-btn:hover {
+      transform: scale(1.2);
+    }
+
+    /* Секундомер / Круги */
+    .laps-list {
+      width: 100%;
+      max-height: 180px;
+      overflow-y: auto;
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .lap-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      font-family: 'Orbitron';
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .lap-item span:last-child {
+      color: var(--primary);
+    }
+
+    /* Модальное окно звонка */
+    .alarm-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(16px);
+      z-index: 100;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 20px;
+      animation: alertPulse 1.2s infinite alternate ease-in-out;
+    }
+
+    .alarm-modal.active {
+      display: flex;
+    }
+
+    @keyframes alertPulse {
+      0% { box-shadow: inset 0 0 50px rgba(255, 0, 123, 0.4); }
+      100% { box-shadow: inset 0 0 150px rgba(255, 0, 123, 0.9); }
+    }
+
+    .alarm-title {
+      font-family: 'Orbitron';
+      font-size: 34px;
+      color: var(--accent);
+      text-shadow: 0 0 30px var(--accent);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Фон с живыми неоновыми сферами -->
+  <div class="bg-lights">
+    <div class="light-blob blob-1"></div>
+    <div class="light-blob blob-2"></div>
+    <div class="light-blob blob-3"></div>
+  </div>
+
+  <div class="app-card">
+    <!-- Навигационные кнопки -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('timer')">⏱ Таймер</button>
+      <button class="tab-btn" onclick="switchTab('alarm')">⏰ Будильник</button>
+      <button class="tab-btn" onclick="switchTab('stopwatch')">⚡ Секундомер</button>
+    </div>
+
+    <!-- Вкладка: ТАЙМЕР -->
+    <div id="tab-timer" class="tab-panel active">
+      <div class="timer-circle-wrap">
+        <svg class="timer-svg" viewBox="0 0 240 240">
+          <defs>
+            <linearGradient id="glowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00f0ff" />
+              <stop offset="100%" stop-color="#ff007b" />
+            </linearGradient>
+          </defs>
+          <circle class="circle-bg" cx="120" cy="120" r="110"></circle>
+          <circle class="circle-progress" id="timerProgress" cx="120" cy="120" r="110"></circle>
+        </svg>
+        <div class="display-time" id="timerDisplay">00:00:00</div>
+      </div>
+
+      <div class="timer-inputs" id="timerInputs">
+        <div class="input-box">
+          <input type="number" id="inputHours" min="0" max="99" value="0" placeholder="00">
+          <span>Часы</span>
+        </div>
+        <div class="time-colon">:</div>
+        <div class="input-box">
+          <input type="number" id="inputMinutes" min="0" max="59" value="5" placeholder="00">
+          <span>Минуты</span>
+        </div>
+        <div class="time-colon">:</div>
+        <div class="input-box">
+          <input type="number" id="inputSeconds" min="0" max="59" value="0" placeholder="00">
+          <span>Секунды</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" id="btnTimerToggle" onclick="toggleTimer()">Старт</button>
+        <button class="btn btn-secondary" onclick="resetTimer()">Сброс</button>
+      </div>
+    </div>
+
+    <!-- Вкладка: БУДИЛЬНИК -->
+    <div id="tab-alarm" class="tab-panel">
+      <div class="alarm-current-time" id="realTimeClock">12:00:00</div>
+      <div class="alarm-form">
+        <input type="time" id="alarmTimeInput" required>
+        <input type="text" id="alarmLabelInput" placeholder="Название (напр. Подъём)">
+        <button class="btn btn-primary" style="padding: 12px 18px;" onclick="addAlarm()">+</button>
+      </div>
+      <div class="alarm-list" id="alarmList"></div>
+    </div>
+
+    <!-- Вкладка: СЕКУНДОМЕР -->
+    <div id="tab-stopwatch" class="tab-panel">
+      <div class="display-time" id="stopwatchDisplay" style="position:static; margin: 30px 0;">00:00.00</div>
+      <div class="controls">
+        <button class="btn btn-primary" id="btnSwToggle" onclick="toggleStopwatch()">Старт</button>
+        <button class="btn btn-secondary" onclick="lapStopwatch()">Круг</button>
+        <button class="btn btn-secondary" onclick="resetStopwatch()">Сброс</button>
+      </div>
+      <div class="laps-list" id="lapsList"></div>
+    </div>
+  </div>
+
+  <!-- Модалка срабатывания будильника/таймера -->
+  <div class="alarm-modal" id="alarmModal">
+    <div class="alarm-title" id="modalTitle">ВРЕМЯ ВЫШЛО!</div>
+    <button class="btn btn-danger" style="font-size: 18px; padding: 16px 36px;" onclick="stopAlertSound()">Остановить</button>
+  </div>
+
+  <script>
+    // ----------------------------------------------------
+    // ЗВУКОВОЙ ДВИЖОК (Web Audio API - работает без файлов)
+    // ----------------------------------------------------
+    let audioCtx = null;
+    let alarmOscInterval = null;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playBeep(freq = 880, type = 'sine', duration = 0.2) {
+      initAudio();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function startAlarmSound() {
+      initAudio();
+      stopAlertSound();
+      alarmOscInterval = setInterval(() => {
+        playBeep(920, 'triangle', 0.25);
+        setTimeout(() => playBeep(1240, 'triangle', 0.35), 200);
+      }, 700);
+    }
+
+    function stopAlertSound() {
+      if (alarmOscInterval) {
+        clearInterval(alarmOscInterval);
+        alarmOscInterval = null;
+      }
+      document.getElementById('alarmModal').classList.remove('active');
+    }
+
+    // ----------------------------------------------------
+    // НАВИГАЦИЯ МЕЖДУ ВКЛАДКАМИ
+    // ----------------------------------------------------
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        b.classList.toggle('active', ['timer', 'alarm', 'stopwatch'][i] === name);
+      });
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(`tab-${name}`).classList.add('active');
+    }
+
+    // ----------------------------------------------------
+    // ТАЙМЕР
+    // ----------------------------------------------------
+    let timerDuration = 300;
+    let timerRemaining = 300;
+    let timerRunning = false;
+    let timerInterval = null;
+    const circleCircumference = 2 * Math.PI * 110;
+
+    function updateTimerDisplay(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      document.getElementById('timerDisplay').innerText = 
+        `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+      const progress = timerDuration > 0 ? (timerRemaining / timerDuration) : 0;
+      const offset = circleCircumference - (progress * circleCircumference);
+      document.getElementById('timerProgress').style.strokeDashoffset = offset;
+    }
+
+    function toggleTimer() {
+      initAudio();
+      if (!timerRunning) {
+        if (timerRemaining <= 0) {
+          const h = parseInt(document.getElementById('inputHours').value) || 0;
+          const m = parseInt(document.getElementById('inputMinutes').value) || 0;
+          const s = parseInt(document.getElementById('inputSeconds').value) || 0;
+          timerDuration = h * 3600 + m * 60 + s;
+          timerRemaining = timerDuration;
+        }
+        if (timerRemaining <= 0) return;
+
+        timerRunning = true;
+        document.getElementById('btnTimerToggle').innerText = 'Пауза';
+        document.getElementById('btnTimerToggle').classList.replace('btn-primary', 'btn-danger');
+
+        timerInterval = setInterval(() => {
+          timerRemaining--;
+          updateTimerDisplay(timerRemaining);
+          if (timerRemaining <= 0) {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            document.getElementById('btnTimerToggle').innerText = 'Старт';
+            document.getElementById('btnTimerToggle').classList.replace('btn-danger', 'btn-primary');
+            triggerAlert('🔔 ВРЕМЯ ТАЙМЕРА ИСТЕКЛО!');
+          }
+        }, 1000);
+      } else {
+        clearInterval(timerInterval);
+        timerRunning = false;
+        document.getElementById('btnTimerToggle').innerText = 'Продолжить';
+        document.getElementById('btnTimerToggle').classList.replace('btn-danger', 'btn-primary');
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      const h = parseInt(document.getElementById('inputHours').value) || 0;
+      const m = parseInt(document.getElementById('inputMinutes').value) || 0;
+      const s = parseInt(document.getElementById('inputSeconds').value) || 0;
+      timerDuration = h * 3600 + m * 60 + s;
+      timerRemaining = timerDuration;
+      updateTimerDisplay(timerRemaining);
+      document.getElementById('btnTimerToggle').innerText = 'Старт';
+      document.getElementById('btnTimerToggle').classList.replace('btn-danger', 'btn-primary');
+    }
+
+    // ----------------------------------------------------
+    // ЧАСЫ И БУДИЛЬНИКИ
+    // ----------------------------------------------------
+    let alarms = [];
+
+    function updateRealClock() {
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      document.getElementById('realTimeClock').innerText = timeStr;
+
+      // Проверка будильников
+      const currentHM = timeStr.substring(0, 5);
+      const currentSec = now.getSeconds();
+
+      if (currentSec === 0) {
+        alarms.forEach(a => {
+          if (a.time === currentHM && a.active) {
+            triggerAlert(`⏰ БУДИЛЬНИК: ${a.label || 'Пора просыпаться!'}`);
+          }
+        });
+      }
+    }
+    setInterval(updateRealClock, 1000);
+    updateRealClock();
+
+    function addAlarm() {
+      const timeInput = document.getElementById('alarmTimeInput').value;
+      const labelInput = document.getElementById('alarmLabelInput').value.trim();
+      if (!timeInput) return;
+
+      alarms.push({ id: 
